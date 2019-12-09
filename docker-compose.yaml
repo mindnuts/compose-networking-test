@@ -1,0 +1,41 @@
+version: "2"
+services:
+  dnsmasq:
+    image: jpillora/dnsmasq
+    ports:
+      - "${DOCKER_BRIDGE_INTERFACE}:53:53/tcp"
+      - "${DOCKER_BRIDGE_INTERFACE}:53:53/udp"
+      - "5380:8080"
+    volumes:
+      - "./services/docker-dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf"
+    environment:
+      - "HTTP_USER=foo"
+      - "HTTP_PASS=bar"
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    labels:
+      - "traefik.enable=false"
+
+  hg-data:
+    depends_on:
+      - "dnsmasq"      
+    image: bitnami/minideb:stretch
+    command: ["/bin/bash"]
+    stdin_open: true
+    tty: true
+    dns: ${DOCKER_BRIDGE_INTERFACE}
+    extra_hosts:
+      - "backends:${DOCKER_BRIDGE_INTERFACE}"
+    environment:
+      - "HG_ENV=local"
+      - "HG_ROOT=/src"
+      - "AGENCY_PORTAL_URL=agency.localplugins.xyz"
+      - "PRIMARY_INSTANCE=172.17.0.1:27017"
+    ports:
+      - "3050:3050"
+    mem_limit: 350m
+    mem_reservation: 100m
+    logging:
+      options:
+       max-size: "50m"
